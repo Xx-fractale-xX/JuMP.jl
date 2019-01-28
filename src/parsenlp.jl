@@ -259,7 +259,8 @@ end
 # Variable objects should be spliced into the expression.
 function NonlinearExprData(m::Model, ex::Expr)
     ex = spliceref(m,ex)
-    nd, values = ReverseDiffSparse.expr_to_nodedata(ex,m.nlpdata.user_operators)
+    # nd, values = ReverseDiffSparse.expr_to_nodedata(ex,m.nlpdata.user_operators)
+    nd, values = ReverseDiffSparse.expr_to_nodedata(ex,m.nlpdata.user_operators,precision=Precision_JuMP)
     return NonlinearExprData(nd, values)
 end
 NonlinearExprData(m::Model, ex) = NonlinearExprData(m, :($ex + 0))
