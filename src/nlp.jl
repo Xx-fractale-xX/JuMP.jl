@@ -6,7 +6,7 @@
 
 mutable struct NonlinearExprData
     nd::Vector{NodeData}
-    const_values::Vector{Float64}
+    const_values::Vector{Precision_JuMP}
 end
 
 include("parsenlp.jl")
@@ -17,8 +17,8 @@ mutable struct NLPData
     nlobj
     nlconstr::Vector{NonlinearConstraint}
     nlexpr::Vector{NonlinearExprData}
-    nlconstrDuals::Vector{Float64}
-    nlparamvalues::Vector{Float64}
+    nlconstrDuals::Vector{Precision_JuMP}
+    nlparamvalues::Vector{Precision_JuMP}
     user_operators::ReverseDiffSparse.UserOperatorRegistry
     largest_user_input_dimension::Int
     evaluator
@@ -38,11 +38,11 @@ function newparameter(m::Model,value::Number)
     return NonlinearParameter(m, length(nldata.nlparamvalues))
 end
 
-getvalue(p::NonlinearParameter) = p.m.nlpdata.nlparamvalues[p.index]::Float64
+getvalue(p::NonlinearParameter) = p.m.nlpdata.nlparamvalues[p.index]::Precision_JuMP
 
 setvalue(p::NonlinearParameter,v::Number) = (p.m.nlpdata.nlparamvalues[p.index] = v)
 
-NLPData() = NLPData(nothing, NonlinearConstraint[], NonlinearExprData[], Float64[], Float64[], ReverseDiffSparse.UserOperatorRegistry(), 0, nothing)
+NLPData() = NLPData(nothing, NonlinearConstraint[], NonlinearExprData[], Precision_JuMP[], Precision_JuMP[], ReverseDiffSparse.UserOperatorRegistry(), 0, nothing)
 
 Base.copy(::NLPData) = error("Copying nonlinear problems not yet implemented")
 
@@ -66,15 +66,15 @@ end
 mutable struct FunctionStorage
     nd::Vector{NodeData}
     adj::SparseMatrixCSC{Bool,Int}
-    const_values::Vector{Float64}
-    forward_storage::Vector{Float64}
-    partials_storage::Vector{Float64}
-    reverse_storage::Vector{Float64}
+    const_values::Vector{Precision_JuMP}
+    forward_storage::Vector{Precision_JuMP}
+    partials_storage::Vector{Precision_JuMP}
+    reverse_storage::Vector{Precision_JuMP}
     grad_sparsity::Vector{Int}
     hess_I::Vector{Int} # nonzero pattern of hessian
     hess_J::Vector{Int}
     rinfo::Coloring.RecoveryInfo # coloring info for hessians
-    seed_matrix::Matrix{Float64}
+    seed_matrix::Matrix{Precision_JuMP}
     linearity::Linearity
     dependent_subexpressions::Vector{Int} # subexpressions which this function depends on, ordered for forward pass
 end
@@ -82,45 +82,45 @@ end
 mutable struct SubexpressionStorage
     nd::Vector{NodeData}
     adj::SparseMatrixCSC{Bool,Int}
-    const_values::Vector{Float64}
-    forward_storage::Vector{Float64}
-    partials_storage::Vector{Float64}
-    reverse_storage::Vector{Float64}
-    forward_storage_ϵ::Vector{Float64}
-    partials_storage_ϵ::Vector{Float64}
-    reverse_storage_ϵ::Vector{Float64}
+    const_values::Vector{Precision_JuMP}
+    forward_storage::Vector{Precision_JuMP}
+    partials_storage::Vector{Precision_JuMP}
+    reverse_storage::Vector{Precision_JuMP}
+    forward_storage_ϵ::Vector{Precision_JuMP}
+    partials_storage_ϵ::Vector{Precision_JuMP}
+    reverse_storage_ϵ::Vector{Precision_JuMP}
     linearity::Linearity
 end
 
 mutable struct NLPEvaluator <: MathProgBase.AbstractNLPEvaluator
     m::Model
-    A::SparseMatrixCSC{Float64,Int} # linear constraint matrix
-    parameter_values::Vector{Float64}
+    A::SparseMatrixCSC{Precision_JuMP,Int} # linear constraint matrix
+    parameter_values::Vector{Precision_JuMP}
     has_nlobj::Bool
-    linobj::Vector{Float64}
+    linobj::Vector{Precision_JuMP}
     objective::FunctionStorage
     constraints::Vector{FunctionStorage}
     subexpressions::Vector{SubexpressionStorage}
     subexpression_order::Vector{Int}
-    subexpression_forward_values::Vector{Float64}
-    subexpression_reverse_values::Vector{Float64}
+    subexpression_forward_values::Vector{Precision_JuMP}
+    subexpression_reverse_values::Vector{Precision_JuMP}
     subexpression_linearity::Vector{ReverseDiffSparse.Linearity}
     subexpressions_as_julia_expressions::Vector{Any}
-    last_x::Vector{Float64}
-    jac_storage::Vector{Float64} # temporary storage for computing jacobians
-    user_output_buffer::Vector{Float64} # temporary storage for user-defined functions
+    last_x::Vector{Precision_JuMP}
+    jac_storage::Vector{Precision_JuMP} # temporary storage for computing jacobians
+    user_output_buffer::Vector{Precision_JuMP} # temporary storage for user-defined functions
     # storage for computing hessians
-    # these Float64 vectors are reinterpreted to hold multiple epsilon components
+    # these Precision_JuMP vectors are reinterpreted to hold multiple epsilon components
     # so the length should be multiplied by the maximum number of epsilon components
     disable_2ndorder::Bool # don't offer Hess or HessVec
     want_hess::Bool
-    forward_storage_ϵ::Vector{Float64} # (longest expression)
-    partials_storage_ϵ::Vector{Float64} # (longest expression)
-    reverse_storage_ϵ::Vector{Float64} # (longest expression)
-    input_ϵ::Vector{Float64} # (number of variables)
-    output_ϵ::Vector{Float64}# (number of variables)
-    subexpression_forward_values_ϵ::Vector{Float64} # (number of subexpressions)
-    subexpression_reverse_values_ϵ::Vector{Float64} # (number of subexpressions)
+    forward_storage_ϵ::Vector{Precision_JuMP} # (longest expression)
+    partials_storage_ϵ::Vector{Precision_JuMP} # (longest expression)
+    reverse_storage_ϵ::Vector{Precision_JuMP} # (longest expression)
+    input_ϵ::Vector{Precision_JuMP} # (number of variables)
+    output_ϵ::Vector{Precision_JuMP}# (number of variables)
+    subexpression_forward_values_ϵ::Vector{Precision_JuMP} # (number of subexpressions)
+    subexpression_reverse_values_ϵ::Vector{Precision_JuMP} # (number of subexpressions)
     # hessian sparsity pattern
     hess_I::Vector{Int}
     hess_J::Vector{Int}
@@ -152,12 +152,12 @@ mutable struct NLPEvaluator <: MathProgBase.AbstractNLPEvaluator
                 has_user_mv_operator |= ReverseDiffSparse.has_user_multivariate_operators(nlconstr.terms.nd)
             end
             d.disable_2ndorder = has_user_mv_operator
-            d.user_output_buffer = Array{Float64}(undef, m.nlpdata.largest_user_input_dimension)
-            d.jac_storage = Array{Float64}(undef, max(numVar,m.nlpdata.largest_user_input_dimension))
+            d.user_output_buffer = Array{Precision_JuMP}(undef, m.nlpdata.largest_user_input_dimension)
+            d.jac_storage = Array{Precision_JuMP}(undef, max(numVar,m.nlpdata.largest_user_input_dimension))
         else
             d.disable_2ndorder = false
-            d.user_output_buffer = Array{Float64}(undef, 0)
-            d.jac_storage = Array{Float64}(undef, numVar)
+            d.user_output_buffer = Array{Precision_JuMP}(undef, 0)
+            d.jac_storage = Array{Precision_JuMP}(undef, numVar)
         end
 
         d.eval_f_init = false
@@ -207,7 +207,7 @@ function FunctionStorage(nd::Vector{NodeData}, const_values,numVar, coloring_sto
     else
         hess_I = hess_J = Int[]
         rinfo = Coloring.RecoveryInfo()
-        seed_matrix = Array{Float64}(undef, 0,0)
+        seed_matrix = Array{Precision_JuMP}(undef, 0,0)
         linearity = [NONLINEAR]
     end
 
@@ -223,7 +223,7 @@ function SubexpressionStorage(nd::Vector{NodeData}, const_values,numVar, fixed_v
     reverse_storage = zeros(length(nd))
     linearity = classify_linearity(nd, adj, subexpression_linearity, fixed_variables)
 
-    empty_arr = Array{Float64}(undef, 0)
+    empty_arr = Array{Precision_JuMP}(undef, 0)
 
     return SubexpressionStorage(nd, adj, const_values, forward_storage, partials_storage, reverse_storage, empty_arr, empty_arr, empty_arr, linearity[1])
 
@@ -283,8 +283,8 @@ function MathProgBase.initialize(d::NLPEvaluator, requested_features::Vector{Sym
     subexpression_variables = Array{Vector{Int}}(undef, length(nldata.nlexpr))
     subexpression_edgelist = Array{Set{Tuple{Int,Int}}}(undef, length(nldata.nlexpr))
     d.subexpressions = Array{SubexpressionStorage}(undef, length(nldata.nlexpr))
-    d.subexpression_forward_values = Array{Float64}(undef, length(d.subexpressions))
-    d.subexpression_reverse_values = Array{Float64}(undef, length(d.subexpressions))
+    d.subexpression_forward_values = Array{Precision_JuMP}(undef, length(d.subexpressions))
+    d.subexpression_reverse_values = Array{Precision_JuMP}(undef, length(d.subexpressions))
 
     empty_edgelist = Set{Tuple{Int,Int}}()
     for k in d.subexpression_order # only load expressions which actually are used
@@ -377,31 +377,31 @@ function MathProgBase.initialize(d::NLPEvaluator, requested_features::Vector{Sym
     max_chunk = min(max_chunk, 10) # 10 is hardcoded upper bound to avoid excess memory allocation
 
     if d.want_hess || want_hess_storage # storage for Hess or HessVec
-        d.input_ϵ = Array{Float64}(undef, max_chunk*d.m.numCols)
-        d.output_ϵ = Array{Float64}(undef, max_chunk*d.m.numCols)
-        d.forward_storage_ϵ = Array{Float64}(undef, max_chunk*max_expr_length)
-        d.partials_storage_ϵ = Array{Float64}(undef, max_chunk*max_expr_length)
-        d.reverse_storage_ϵ = Array{Float64}(undef, max_chunk*max_expr_length)
-        d.subexpression_forward_values_ϵ = Array{Float64}(undef, max_chunk*length(d.subexpressions))
-        d.subexpression_reverse_values_ϵ = Array{Float64}(undef, max_chunk*length(d.subexpressions))
+        d.input_ϵ = Array{Precision_JuMP}(undef, max_chunk*d.m.numCols)
+        d.output_ϵ = Array{Precision_JuMP}(undef, max_chunk*d.m.numCols)
+        d.forward_storage_ϵ = Array{Precision_JuMP}(undef, max_chunk*max_expr_length)
+        d.partials_storage_ϵ = Array{Precision_JuMP}(undef, max_chunk*max_expr_length)
+        d.reverse_storage_ϵ = Array{Precision_JuMP}(undef, max_chunk*max_expr_length)
+        d.subexpression_forward_values_ϵ = Array{Precision_JuMP}(undef, max_chunk*length(d.subexpressions))
+        d.subexpression_reverse_values_ϵ = Array{Precision_JuMP}(undef, max_chunk*length(d.subexpressions))
         for k in d.subexpression_order
             subex = d.subexpressions[k]
-            subex.forward_storage_ϵ = zeros(Float64,max_chunk*length(subex.nd))
-            subex.partials_storage_ϵ = zeros(Float64,max_chunk*length(subex.nd))
-            subex.reverse_storage_ϵ = zeros(Float64,max_chunk*length(subex.nd))
+            subex.forward_storage_ϵ = zeros(Precision_JuMP,max_chunk*length(subex.nd))
+            subex.partials_storage_ϵ = zeros(Precision_JuMP,max_chunk*length(subex.nd))
+            subex.reverse_storage_ϵ = zeros(Precision_JuMP,max_chunk*length(subex.nd))
         end
         d.max_chunk = max_chunk
         if d.want_hess
             d.hess_I, d.hess_J = _hesslag_structure(d)
             # JIT warm-up
-            MathProgBase.eval_hesslag(d, Array{Float64}(undef, length(d.hess_I)), d.m.colVal, 1.0, ones(MathProgBase.numconstr(d.m)))
+            MathProgBase.eval_hesslag(d, Array{Precision_JuMP}(undef, length(d.hess_I)), Precision_JuMP.(d.m.colVal), Precision_JuMP(1.0), Precision_JuMP.(ones(MathProgBase.numconstr(d.m))))
         end
     end
 
     # JIT warm-up
     if :Grad in requested_features
-        MathProgBase.eval_grad_f(d, zeros(numVar), d.m.colVal)
-        MathProgBase.eval_g(d, zeros(MathProgBase.numconstr(d.m)), d.m.colVal)
+        MathProgBase.eval_grad_f(d, zeros(Precision_JuMP,numVar), Precision_JuMP.(d.m.colVal))
+        MathProgBase.eval_g(d, zeros(Precision_JuMP, MathProgBase.numconstr(d.m)), Precision_JuMP.(d.m.colVal))
     end
 
     #tprep = toq()
@@ -502,7 +502,7 @@ function MathProgBase.eval_grad_f(d::NLPEvaluator, g, x)
         ex = d.objective
         subexpr_reverse_values = d.subexpression_reverse_values
         subexpr_reverse_values[ex.dependent_subexpressions] .= 0.0
-        reverse_extract(g,ex.reverse_storage,ex.nd,ex.adj,subexpr_reverse_values,1.0)
+        reverse_extract(g,ex.reverse_storage,ex.nd,ex.adj,subexpr_reverse_values,Precision_JuMP(1.0))
         for i in length(ex.dependent_subexpressions):-1:1
             k = ex.dependent_subexpressions[i]
             if SIMPLIFY && d.subexpression_linearity[k] == CONSTANT
@@ -628,11 +628,11 @@ end
 
 function MathProgBase.eval_hesslag_prod(
     d::NLPEvaluator,
-    h::AbstractVector{Float64}, # output vector
-    x::AbstractVector{Float64}, # current solution
-    v::AbstractVector{Float64}, # rhs vector
-    σ::Float64,                 # multiplier for objective
-    μ::AbstractVector{Float64}) # multipliers for each constraint
+    h::AbstractVector{Precision_JuMP}, # output vector
+    x::AbstractVector{Precision_JuMP}, # current solution
+    v::AbstractVector{Precision_JuMP}, # rhs vector
+    σ::Precision_JuMP,                 # multiplier for objective
+    μ::AbstractVector{Precision_JuMP}) # multipliers for each constraint
 
     nldata = d.m.nlpdata::NLPData
 
@@ -676,30 +676,30 @@ function MathProgBase.eval_hesslag_prod(
         row += 1
     end
 
-    input_ϵ = reinterpret(ForwardDiff.Partials{1,Float64}, d.input_ϵ)
-    output_ϵ = reinterpret(ForwardDiff.Partials{1,Float64}, d.output_ϵ)
+    input_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP}, d.input_ϵ)
+    output_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP}, d.output_ϵ)
     for i in 1:length(x)
         input_ϵ[i] = ForwardDiff.Partials((v[i],))
     end
 
     # forward evaluate all subexpressions once
-    subexpr_forward_values_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},d.subexpression_forward_values_ϵ)
-    subexpr_reverse_values_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},d.subexpression_reverse_values_ϵ)
-    forward_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},d.forward_storage_ϵ)
-    reverse_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},d.reverse_storage_ϵ)
-    partials_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},d.partials_storage_ϵ)
+    subexpr_forward_values_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},d.subexpression_forward_values_ϵ)
+    subexpr_reverse_values_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},d.subexpression_reverse_values_ϵ)
+    forward_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},d.forward_storage_ϵ)
+    reverse_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},d.reverse_storage_ϵ)
+    partials_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},d.partials_storage_ϵ)
     SIMPLIFY = d.m.simplify_nonlinear_expressions
     for expridx in d.subexpression_order
         if SIMPLIFY && d.subexpression_linearity[expridx] == CONSTANT
             continue
         end
         subexpr = d.subexpressions[expridx]
-        sub_forward_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},subexpr.forward_storage_ϵ)
-        sub_partials_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},subexpr.partials_storage_ϵ)
+        sub_forward_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},subexpr.forward_storage_ϵ)
+        sub_partials_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},subexpr.partials_storage_ϵ)
         subexpr_forward_values_ϵ[expridx] = forward_eval_ϵ(subexpr.forward_storage,sub_forward_storage_ϵ, subexpr.partials_storage, sub_partials_storage_ϵ, subexpr.nd, subexpr.adj, input_ϵ, subexpr_forward_values_ϵ,user_operators=nldata.user_operators)
     end
     # we only need to do one reverse pass through the subexpressions as well
-    zero_ϵ = zero(ForwardDiff.Partials{1,Float64})
+    zero_ϵ = zero(ForwardDiff.Partials{1,Precision_JuMP})
     fill!(subexpr_reverse_values_ϵ,zero_ϵ)
     fill!(d.subexpression_reverse_values,0.0)
     fill!(reverse_storage_ϵ,zero_ϵ)
@@ -707,7 +707,8 @@ function MathProgBase.eval_hesslag_prod(
     if d.has_nlobj
         ex = d.objective
         forward_eval_ϵ(ex.forward_storage, forward_storage_ϵ, ex.partials_storage, partials_storage_ϵ, ex.nd,ex.adj,input_ϵ, subexpr_forward_values_ϵ,user_operators=nldata.user_operators)
-        reverse_eval_ϵ(output_ϵ,ex.reverse_storage, reverse_storage_ϵ,ex.partials_storage, partials_storage_ϵ,ex.nd,ex.adj,d.subexpression_reverse_values,subexpr_reverse_values_ϵ, σ, zero_ϵ)
+        reverse_eval_ϵ(output_ϵ,ex.reverse_storage, reverse_storage_ϵ,ex.partials_storage, partials_storage_ϵ,ex.nd,ex.adj,d.subexpression_reverse_values,subexpr_reverse_values_ϵ, σ
+            , zero_ϵ)
     end
 
 
@@ -725,8 +726,8 @@ function MathProgBase.eval_hesslag_prod(
             continue
         end
         subexpr = d.subexpressions[expridx]
-        sub_reverse_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},subexpr.reverse_storage_ϵ)
-        sub_partials_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Float64},subexpr.partials_storage_ϵ)
+        sub_reverse_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},subexpr.reverse_storage_ϵ)
+        sub_partials_storage_ϵ = reinterpret(ForwardDiff.Partials{1,Precision_JuMP},subexpr.partials_storage_ϵ)
         reverse_eval_ϵ(output_ϵ,subexpr.reverse_storage,sub_reverse_storage_ϵ, subexpr.partials_storage, sub_partials_storage_ϵ,subexpr.nd,subexpr.adj,d.subexpression_reverse_values,subexpr_reverse_values_ϵ,d.subexpression_reverse_values[expridx],subexpr_reverse_values_ϵ[expridx])
     end
 
@@ -738,10 +739,10 @@ end
 
 function MathProgBase.eval_hesslag(
     d::NLPEvaluator,
-    H::AbstractVector{Float64},         # Sparse hessian entry vector
-    x::AbstractVector{Float64},         # Current solution
-    obj_factor::Float64,                # Lagrangian multiplier for objective
-    lambda::AbstractVector{Float64})    # Multipliers for each constraint
+    H::AbstractVector{Precision_JuMP},      # Sparse hessian entry vector
+    x::AbstractVector{Precision_JuMP},      # Current solution
+    obj_factor::Precision_JuMP,             # Lagrangian multiplier for objective
+    lambda::AbstractVector{Precision_JuMP}) # Multipliers for each constraint
 
     qobj = d.m.obj::QuadExpr
     nldata = d.m.nlpdata::NLPData
@@ -812,12 +813,12 @@ end
 
 function hessian_slice_inner(d, ex, R, input_ϵ, output_ϵ, ::Type{Val{CHUNK}}) where CHUNK
 
-    subexpr_forward_values_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},d.subexpression_forward_values_ϵ)
-    subexpr_reverse_values_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},d.subexpression_reverse_values_ϵ)
-    forward_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},d.forward_storage_ϵ)
-    reverse_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},d.reverse_storage_ϵ)
-    partials_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},d.partials_storage_ϵ)
-    zero_ϵ = zero(ForwardDiff.Partials{CHUNK,Float64})
+    subexpr_forward_values_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},d.subexpression_forward_values_ϵ)
+    subexpr_reverse_values_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},d.subexpression_reverse_values_ϵ)
+    forward_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},d.forward_storage_ϵ)
+    reverse_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},d.reverse_storage_ϵ)
+    partials_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},d.partials_storage_ϵ)
+    zero_ϵ = zero(ForwardDiff.Partials{CHUNK,Precision_JuMP})
 
     user_operators = d.m.nlpdata.user_operators::ReverseDiffSparse.UserOperatorRegistry
     SIMPLIFY = d.m.simplify_nonlinear_expressions
@@ -827,8 +828,8 @@ function hessian_slice_inner(d, ex, R, input_ϵ, output_ϵ, ::Type{Val{CHUNK}}) 
             continue
         end
         subexpr = d.subexpressions[expridx]
-        sub_forward_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},subexpr.forward_storage_ϵ)
-        sub_partials_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},subexpr.partials_storage_ϵ)
+        sub_forward_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},subexpr.forward_storage_ϵ)
+        sub_partials_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},subexpr.partials_storage_ϵ)
         subexpr_forward_values_ϵ[expridx] = forward_eval_ϵ(subexpr.forward_storage,sub_forward_storage_ϵ,subexpr.partials_storage,sub_partials_storage_ϵ, subexpr.nd, subexpr.adj, input_ϵ, subexpr_forward_values_ϵ,user_operators=user_operators)
     end
     forward_eval_ϵ(ex.forward_storage,forward_storage_ϵ,ex.partials_storage, partials_storage_ϵ,ex.nd,ex.adj,input_ϵ, subexpr_forward_values_ϵ,user_operators=user_operators)
@@ -837,15 +838,15 @@ function hessian_slice_inner(d, ex, R, input_ϵ, output_ϵ, ::Type{Val{CHUNK}}) 
     subexpr_reverse_values_ϵ[ex.dependent_subexpressions] = zero_ϵ
     d.subexpression_reverse_values[ex.dependent_subexpressions] .= 0.0
 
-    reverse_eval_ϵ(output_ϵ, ex.reverse_storage, reverse_storage_ϵ,ex.partials_storage, partials_storage_ϵ,ex.nd,ex.adj,d.subexpression_reverse_values,subexpr_reverse_values_ϵ, 1.0, zero_ϵ)
+    reverse_eval_ϵ(output_ϵ, ex.reverse_storage, reverse_storage_ϵ,ex.partials_storage, partials_storage_ϵ,ex.nd,ex.adj,d.subexpression_reverse_values,subexpr_reverse_values_ϵ, Precision_JuMP(1.0), zero_ϵ)
     for i in length(ex.dependent_subexpressions):-1:1
         expridx = ex.dependent_subexpressions[i]
         if SIMPLIFY && d.subexpression_linearity[expridx] == CONSTANT
             continue
         end
         subexpr = d.subexpressions[expridx]
-        sub_reverse_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},subexpr.reverse_storage_ϵ)
-        sub_partials_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64},subexpr.partials_storage_ϵ)
+        sub_reverse_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},subexpr.reverse_storage_ϵ)
+        sub_partials_storage_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP},subexpr.partials_storage_ϵ)
         reverse_eval_ϵ(output_ϵ, subexpr.reverse_storage, sub_reverse_storage_ϵ,subexpr.partials_storage,sub_partials_storage_ϵ,subexpr.nd,subexpr.adj,d.subexpression_reverse_values,subexpr_reverse_values_ϵ,d.subexpression_reverse_values[expridx],subexpr_reverse_values_ϵ[expridx])
     end
 end
@@ -861,12 +862,12 @@ function hessian_slice(d, ex, x, H, scale, nzcount, recovery_tmp_storage,::Type{
     Coloring.prepare_seed_matrix!(R,ex.rinfo)
     local_to_global_idx = ex.rinfo.local_indices
 
-    zero_ϵ = zero(ForwardDiff.Partials{CHUNK,Float64})
+    zero_ϵ = zero(ForwardDiff.Partials{CHUNK,Precision_JuMP})
 
     input_ϵ_raw = d.input_ϵ
     output_ϵ_raw = d.output_ϵ
-    input_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64}, input_ϵ_raw)
-    output_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Float64}, output_ϵ_raw)
+    input_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP}, input_ϵ_raw)
+    output_ϵ = reinterpret_unsafe(ForwardDiff.Partials{CHUNK,Precision_JuMP}, output_ϵ_raw)
 
 
     # compute hessian-vector products
@@ -1320,14 +1321,14 @@ function _getValue(x::NonlinearExpression)
 
     subexpression_order, individual_order = order_subexpressions(Vector{NodeData}[this_subexpr.nd],subexpr)
 
-    subexpr_values = Array{Float64}(undef, length(subexpr))
+    subexpr_values = Array{Precision_JuMP}(undef, length(subexpr))
 
     for k in subexpression_order
         max_len = max(max_len, length(nldata.nlexpr[k].nd))
     end
 
-    forward_storage = Array{Float64}(undef, max_len)
-    partials_storage = Array{Float64}(undef, max_len)
+    forward_storage = Array{Precision_JuMP}(undef, max_len)
+    partials_storage = Array{Precision_JuMP}(undef, max_len)
     user_input_buffer = zeros(nldata.largest_user_input_dimension)
     user_output_buffer = zeros(nldata.largest_user_input_dimension)
 
@@ -1357,7 +1358,7 @@ function MathProgBase.eval_grad_f(d::UserFunctionEvaluator,grad,x)
     nothing
 end
 
-function UserAutoDiffEvaluator(dimension::Integer, f::Function, ::Type{T} = Float64) where T
+function UserAutoDiffEvaluator(dimension::Integer, f::Function, ::Type{T} = Precision_JuMP) where T
     g = x -> f(x...)
     cfg = ForwardDiff.GradientConfig(g, zeros(T, dimension))
     ∇f = (out, y) -> ForwardDiff.gradient!(out, g, y, cfg)

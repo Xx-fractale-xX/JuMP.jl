@@ -10,9 +10,9 @@
 # src/quadexpr.jl
 # Defines all types relating to expressions with a quadratic and affine part
 # - GenericQuadExpr             ∑qᵢⱼ xᵢⱼ  +  ∑ aᵢ xᵢ  +  c
-#   - QuadExpr                  Alias for (Float64, Variable)
+#   - QuadExpr                  Alias for (Precision_JuMP, Variable)
 # - GenericQuadConstraint       ∑qᵢⱼ xᵢⱼ  +  ∑ aᵢ xᵢ  +  c  [≤,≥]  0
-#   - QuadConstraint            Alias for (Float64, Variable)
+#   - QuadConstraint            Alias for (Precision_JuMP, Variable)
 # Operator overloads in src/operators.jl
 #############################################################################
 
@@ -77,15 +77,15 @@ function Base.isequal(q::GenericQuadExpr{T,S},other::GenericQuadExpr{T,S}) where
     return true
 end
 
-# Alias for (Float64, Variable)
-const QuadExpr = GenericQuadExpr{Float64,Variable}
-Base.convert(::Type{QuadExpr}, v::Union{Real,Variable,AffExpr}) = QuadExpr(Variable[], Variable[], Float64[], AffExpr(v))
+# Alias for (Precision_JuMP, Variable)
+const QuadExpr = GenericQuadExpr{Precision_JuMP,Variable}
+Base.convert(::Type{QuadExpr}, v::Union{Real,Variable,AffExpr}) = QuadExpr(Variable[], Variable[], Precision_JuMP[], AffExpr(v))
 QuadExpr() = zero(QuadExpr)
 
 function setobjective(m::Model, sense::Symbol, q::QuadExpr)
     m.obj = q
     if m.internalModelLoaded
-        if hasmethod(MathProgBase.setquadobjterms!, (typeof(m.internalModel), Vector{Cint}, Vector{Cint}, Vector{Float64}))
+        if hasmethod(MathProgBase.setquadobjterms!, (typeof(m.internalModel), Vector{Cint}, Vector{Cint}, Vector{Precision_JuMP}))
             verify_ownership(m, m.obj.qvars1)
             verify_ownership(m, m.obj.qvars2)
             MathProgBase.setquadobjterms!(m.internalModel, Cint[v.col for v in m.obj.qvars1], Cint[v.col for v in m.obj.qvars2], m.obj.qcoeffs)
@@ -126,7 +126,7 @@ end
 Base.copy(c::CON, new_model::Model) where {CON<:GenericQuadConstraint} = CON(copy(c.terms, new_model), c.sense)
 
 
-# Alias for (Float64, Variable)
+# Alias for (Precision_JuMP, Variable)
 const QuadConstraint = GenericQuadConstraint{QuadExpr}
 
 function Base.copy(c::QuadConstraint, new_model::Model)
@@ -138,12 +138,12 @@ function addconstraint(m::Model, c::QuadConstraint)
     if m.internalModelLoaded
         if hasmethod(MathProgBase.addquadconstr!, (typeof(m.internalModel),
                                                        Vector{Cint},
-                                                       Vector{Float64},
+                                                       Vector{Precision_JuMP},
                                                        Vector{Cint},
                                                        Vector{Cint},
-                                                       Vector{Float64},
+                                                       Vector{Precision_JuMP},
                                                        Char,
-                                                       Float64))
+                                                       Precision_JuMP))
             if !((s = string(c.sense)[1]) in ['<', '>', '='])
                 error("Invalid sense for quadratic constraint")
             end

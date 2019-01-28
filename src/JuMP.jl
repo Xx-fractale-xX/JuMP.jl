@@ -23,7 +23,11 @@ using Compat.LinearAlgebra
 using Compat.SparseArrays
 using Compat.Printf
 
+# using DecFP, Quadmath
+
 using Compat: @info, @warn, axes
+
+const Precision_JuMP = Float64
 
 if VERSION < v"0.7-"
     const IdDict = Base.ObjectIdDict

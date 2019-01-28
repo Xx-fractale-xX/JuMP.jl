@@ -10,7 +10,7 @@
 # src/affexpr.jl
 # Defines all types relating to affine expressions
 # - GenericAffExpr              ∑ aᵢ xᵢ  +  c
-#   - AffExpr                   Alias for (Float64, Variable)
+#   - AffExpr                   Alias for (Precision_JuMP, Variable)
 # - GenericRangeConstraint      l ≤ ∑ aᵢ xᵢ ≤ u
 #   - LinearConstraint          Alias for AffExpr
 # Operator overloads in src/operators.jl
@@ -107,11 +107,11 @@ function Base.isequal(aff::GenericAffExpr{C,V},other::GenericAffExpr{C,V}) where
 end
 
 
-# Alias for (Float64, Variable), the specific GenericAffExpr used by JuMP
-const AffExpr = GenericAffExpr{Float64,Variable}
+# Alias for (Precision_JuMP, Variable), the specific GenericAffExpr used by JuMP
+const AffExpr = GenericAffExpr{Precision_JuMP,Variable}
 AffExpr() = zero(AffExpr)
 AffExpr(v::Variable) = AffExpr([v], [1.], 0.)
-AffExpr(v::Real) = AffExpr(Variable[], Float64[], v)
+AffExpr(v::Real) = AffExpr(Variable[], Precision_JuMP[], v)
 AffExpr(a::AffExpr) = AffExpr(a.vars, a.coeffs, a.constant)
 
 Base.isempty(a::AffExpr) = (length(a.vars) == 0 && a.constant == 0.)
@@ -162,8 +162,8 @@ end
 # The constant part of the internal expression is assumed to be zero
 mutable struct GenericRangeConstraint{TermsType} <: AbstractConstraint
     terms::TermsType
-    lb::Float64
-    ub::Float64
+    lb::Precision_JuMP
+    ub::Precision_JuMP
 end
 
 #  b ≤ expr ≤ b   →   ==
@@ -203,7 +203,7 @@ end
 function addconstraint(m::Model, c::LinearConstraint)
     push!(m.linconstr,c)
     if m.internalModelLoaded
-        if hasmethod(MathProgBase.addconstr!, (typeof(m.internalModel),Vector{Int},Vector{Float64},Float64,Float64))
+        if hasmethod(MathProgBase.addconstr!, (typeof(m.internalModel),Vector{Int},Vector{Precision_JuMP},Precision_JuMP,Precision_JuMP))
             assert_isfinite(c.terms)
             indices, coeffs = merge_duplicates(Cint, c.terms, m.indexedVector, m)
             MathProgBase.addconstr!(m.internalModel,indices,coeffs,c.lb,c.ub)

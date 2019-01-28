@@ -245,7 +245,7 @@ function processNLExpr(model, ex)
     parsed = parseNLExpr(model, ex, :tape, -1, :values)
     quote
         tape = NodeData[]
-        values = Float64[]
+        values = Precision_JuMP[]
         $parsed
         NonlinearExprData(tape, values)
     end
