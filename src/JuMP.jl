@@ -86,8 +86,8 @@ include("utils.jl")
 ###############################################################################
 # Model class
 # Keeps track of all model and column info
-abstract type AbstractModel end
-mutable struct Model <: AbstractModel
+abstract type AbstractModel{T} end
+mutable struct Model{T} <: AbstractModel{T}
     obj#::QuadExpr
     objSense::Symbol
 
@@ -101,8 +101,8 @@ mutable struct Model <: AbstractModel
     numCols::Int
     colNames::Vector{String}
     colNamesIJulia::Vector{String}
-    colLower::Vector{Float64}
-    colUpper::Vector{Float64}
+    colLower::Vector{T}
+    colUpper::Vector{T}
     colCat::Vector{Symbol}
 
     customNames::Vector
@@ -113,10 +113,10 @@ mutable struct Model <: AbstractModel
     # Solution data
     objBound
     objVal
-    colVal::Vector{Float64}
-    redCosts::Vector{Float64}
-    linconstrDuals::Vector{Float64}
-    conicconstrDuals::Vector{Float64}
+    colVal::Vector{T}
+    redCosts::Vector{T}
+    linconstrDuals::Vector{T}
+    conicconstrDuals::Vector{T}
     constr_to_row::Vector{Vector{Int}}
     # Vector of the same length as sdpconstr.
     # sdpconstrSym[c] is the list of pairs (i,j), i > j
@@ -144,7 +144,7 @@ mutable struct Model <: AbstractModel
     dictList::Vector
 
     # storage vector for merging duplicate terms
-    indexedVector::IndexedVector{Float64}
+    indexedVector::IndexedVector{T}
 
     nlpdata#::NLPData
     simplify_nonlinear_expressions::Bool
@@ -161,6 +161,7 @@ mutable struct Model <: AbstractModel
     # their functionality, and store an instance of the type in this
     # dictionary keyed on an extension-specific symbol
     ext::Dict{Symbol,Any}
+    precision::Type{T}#::Real
 end
 
 # dummy solver
@@ -168,7 +169,7 @@ mutable struct UnsetSolver <: MathProgBase.AbstractMathProgSolver
 end
 
 # Default constructor
-function Model(;solver=UnsetSolver(), simplify_nonlinear_expressions::Bool=false)
+function Model(;precision::Type{T}=Float64, solver=UnsetSolver(), simplify_nonlinear_expressions::Bool=false) where T <:Real
     if !isa(solver,MathProgBase.AbstractMathProgSolver)
         error("solver argument ($solver) must be an AbstractMathProgSolver")
     end
@@ -182,17 +183,17 @@ function Model(;solver=UnsetSolver(), simplify_nonlinear_expressions::Bool=false
           0,                           # numCols
           String[],                    # colNames
           String[],                    # colNamesIJulia
-          Float64[],                   # colLower
-          Float64[],                   # colUpper
+          precision[],                 # colLower
+          precision[],                 # colUpper
           Symbol[],                    # colCat
           Variable[],                  # customNames
-          Vector{Tuple{Symbol,Any}}[], # varCones
+          Tuple{Symbol,Any}[],         # varCones
           0,                           # objBound
           0,                           # objVal
-          Float64[],                   # colVal
-          Float64[],                   # redCosts
-          Float64[],                   # linconstrDuals
-          Float64[],                   # conicconstrDuals
+          precision[],                 # colVal
+          precision[],                 # redCosts
+          precision[],                 # linconstrDuals
+          precision[],                 # conicconstrDuals
           Vector{Int}[],               # constr_to_row
           Vector{Tuple{Int,Int}}[],    # sdpconstrSym
           nothing,                     # internalModel
@@ -202,7 +203,7 @@ function Model(;solver=UnsetSolver(), simplify_nonlinear_expressions::Bool=false
           nothing,                     # solvehook
           nothing,                     # printhook
           Any[],                       # dictList
-          IndexedVector(Float64,0),    # indexedVector
+          IndexedVector(precision,0),  # indexedVector
           nothing,                     # nlpdata
           simplify_nonlinear_expressions, # ...
           Dict{Symbol,Any}(),          # objDict
@@ -210,6 +211,7 @@ function Model(;solver=UnsetSolver(), simplify_nonlinear_expressions::Bool=false
           0,                           # map_counter
           0,                           # operator_counter
           Dict{Symbol,Any}(),          # ext
+          precision                    # precision
     )
 end
 
